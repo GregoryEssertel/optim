@@ -49,34 +49,30 @@ function ConfusionMatrix:add(prediction, target)
 end
 
 function ConfusionMatrix:batchAdd(predictions, targets)
-   local preds, targs, __
+   local preds, targs
    if predictions:dim() == 1 then
       -- predictions is a vector of classes
-      preds = predictions
+      preds = torch.FloatTensor(predictions:size())
+      preds:copy(predictions)
    elseif predictions:dim() == 2 then
       -- prediction is a matrix of class likelihoods
-      if predictions:size(2) == 1 then
-         -- or prediction just needs flattening
-         preds = predictions:copy()
-      else
-         __,preds = predictions:max(2)
-      end
+      self.prediction_batch = self.prediction_batch or torch.FloatTensor(predictions:size())
+      self.prediction_batch:copy(predictions)
+      _,preds = self.prediction_batch:max(2)
       preds:resize(preds:size(1))
    else
       error("predictions has invalid number of dimensions")
    end
-      
+
    if targets:dim() == 1 then
       -- targets is a vector of classes
-      targs = targets
+      targs = torch.FloatTensor(targets:size())
+      targs:copy(targets)
    elseif targets:dim() == 2 then
       -- targets is a matrix of one-hot rows
-      if targets:size(2) == 1 then
-         -- or targets just needs flattening
-         targs = targets:copy()
-      else
-         __,targs = targets:max(2)
-      end
+      self.target_batch = self.target_batch or torch.FloatTensor(targets:size())
+      self.target_batch:copy(target)
+      _,targs = self.target_batch:max(2)
       targs:resize(targs:size(1))
    else
       error("targets has invalid number of dimensions")
@@ -85,6 +81,7 @@ function ConfusionMatrix:batchAdd(predictions, targets)
    for i = 1,preds:size(1) do
       self.mat[targs[i]][preds[i]] = self.mat[targs[i]][preds[i]] + 1
    end
+
 end
 
 function ConfusionMatrix:zero()
@@ -96,7 +93,7 @@ function ConfusionMatrix:zero()
 end
 
 function isNaN(number)
-  return number ~= number
+   return number ~= number
 end
 
 function ConfusionMatrix:updateValids()
@@ -240,7 +237,7 @@ function ConfusionMatrix:render(sortmode, display, block, legendwidth)
       win1:setcolor{r=0,g=0,b=0}
       win1:rectangle((#render)[2],(i-1)*block,legendwidth,block)
       win1:fill()
-      
+
       -- %
       win1:setfont(qt.QFont{serif=false, size=fontsize})
       local gscale = freqs[order[i]]/freqs:max()*0.9+0.1 --3/4
